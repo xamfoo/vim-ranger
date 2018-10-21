@@ -11,10 +11,6 @@ if !exists('g:ranger_command')
   let g:ranger_command = 'ranger'
 endif
 
-if !exists('g:ranger_buffer_close_command')
-  let g:ranger_buffer_close_command = 'bd'
-endif
-
 if !exists('g:ranger_tmp_file_path')
   let g:ranger_tmp_file_path = '/tmp/vim_ranger_chosenfiles'
 endif
@@ -45,7 +41,7 @@ function! s:onChangeDirectory(directory_list)
   endif
 endfunction
 
-function! RangerOpenIn(path, Callback)
+function! RangerOpenIn(path, prevBuffer, Callback)
   let currentPath = expand(a:path)
 
   if isdirectory(currentPath)
@@ -59,18 +55,32 @@ function! RangerOpenIn(path, Callback)
   endif
 
   function! s:OnExit(...) closure
-    " execute g:ranger_buffer_close_command
-
-    if filereadable(g:ranger_tmp_file_path)
-      call a:Callback(readfile(g:ranger_tmp_file_path))
-    endif
+    let l:currentBuffer = bufnr('%')
+    let l:hasFilesToOpen = filereadable(g:ranger_tmp_file_path)
 
     if filereadable(g:ranger_tmp_dir_path)
-      call s:onChangeDirectory(readfile(g:ranger_tmp_dir_path))
+      let l:targetDir = readfile(g:ranger_tmp_dir_path)
+      call delete(g:ranger_tmp_dir_path)
+      call s:onChangeDirectory(targetDir)
     endif
 
-    call delete(g:ranger_tmp_file_path)
-    call delete(g:ranger_tmp_dir_path)
+    if hasFilesToOpen
+      let l:filesToOpen = readfile(g:ranger_tmp_file_path)
+      call delete(g:ranger_tmp_file_path)
+      call a:Callback(filesToOpen)
+      return 0
+    endif
+
+    if a:prevBuffer == currentBuffer
+      enew
+      return 0
+    endif
+
+    if bufexists(a:prevBuffer)
+      exec 'buffer ' . a:prevBuffer
+    else
+      enew
+    endif
   endfunction
 
   function! s:OnExitDeferred(...)
@@ -81,10 +91,12 @@ function! RangerOpenIn(path, Callback)
 endfunction
 
 function! RangerPickFile()
+  let l:currentBuffer = bufnr('%')
+
   if empty(expand('%'))
-    return RangerOpenIn('%:p:h', function('s:openFiles'))
+    return RangerOpenIn('%:p:h', currentBuffer, function('s:openFiles'))
   else
-    return RangerOpenIn('%:p', function('s:openFiles'))
+    return RangerOpenIn('%:p', currentBuffer, function('s:openFiles'))
   endif
 endfunction
 
