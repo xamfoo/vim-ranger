@@ -68,11 +68,13 @@ function! RangerOpenIn(path, prevBuffer, Callback)
       let l:filesToOpen = readfile(g:ranger_tmp_file_path)
       call delete(g:ranger_tmp_file_path)
       call a:Callback(filesToOpen)
+      exec 'bd! ' . l:currentBuffer
       return 0
     endif
 
     if a:prevBuffer == currentBuffer
       enew
+      exec 'bd! ' . l:currentBuffer
       return 0
     endif
 
@@ -81,13 +83,26 @@ function! RangerOpenIn(path, prevBuffer, Callback)
     else
       enew
     endif
+
+    exec 'bd! ' . l:currentBuffer
   endfunction
 
   function! s:OnExitDeferred(...)
     call timer_start(0, function('s:OnExit'))
   endfunction
 
-  call term_start(l:term_command, { 'curwin': 1, 'close_cb': function('s:OnExitDeferred') })
+  if has("nvim")
+    enew
+    call termopen(l:term_command, { 'on_exit': function('s:OnExitDeferred') })
+    setlocal nonumber norelativenumber
+    set bufhidden=unload
+
+    if mode() == 'n'
+      :startinsert
+    endif
+  else
+    call term_start(l:term_command, { 'curwin': 1, 'close_cb': function('s:OnExitDeferred') })
+  endif
 endfunction
 
 function! RangerPickFile()
