@@ -1,6 +1,6 @@
 # vim-ranger
 
-Plugin to integrate ranger with vim so that it complete replaces netrw for local tasks.
+Plugin to integrate ranger with vim so that it completely replaces netrw for local tasks.
 
 Still in development.
 
